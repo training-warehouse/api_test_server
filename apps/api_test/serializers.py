@@ -12,23 +12,24 @@ class HostSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'project_id', 'host', 'description')
 
 
+class ApiSerializer(serializers.ModelSerializer):
+    project_id = serializers.IntegerField(write_only=True)
+    host = HostSerializer(read_only=True)
+    host_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = Api
+        fields = '__all__'
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     last_update_time = serializers.DateTimeField(read_only=True)
     create_time = serializers.DateTimeField(read_only=True)
     user = UserSerializer(read_only=True)
     hosts = HostSerializer(many=True, read_only=True)
+    apis = ApiSerializer(many=True, read_only=True)
 
     class Meta:
         model = Project
-        fields = ('id', 'name', 'type', 'description', 'last_update_time', 'create_time', 'user', 'hosts')
-
-
-class ApiSerializer(serializers.ModelSerializer):
-    project_id = serializers.IntegerField(write_only=True)
-    host = HostSerializer(many=True)
-    host_id = serializers.IntegerField(write_only=True)
-
-    class Meta:
-        model = Api
-        fields = '__all__'
+        fields = ('id', 'name', 'type', 'description', 'last_update_time', 'create_time', 'user', 'hosts', 'apis')
