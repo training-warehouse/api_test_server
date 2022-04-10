@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Project, Host, Api
+from .models import Project, Host, Api, ApiRunRecord, Case, CaseArgument, ApiArgument
 from apps.api_auth.serializers import UserSerializer
 
 
@@ -33,3 +33,27 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ('id', 'name', 'type', 'description', 'last_update_time', 'create_time', 'user', 'hosts', 'apis')
+
+
+class ApiRunRecordSerializer(serializers.ModelSerializer):
+    api = ApiSerializer()
+
+    class Meta:
+        model = ApiRunRecord
+        fields = '__all__'
+
+
+class CaseArgumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CaseArgument
+        exclude = ['case']
+
+
+class CaseSerializer(serializers.ModelSerializer):
+    project_id = serializers.IntegerField(write_only=True)
+    apis = ApiSerializer(many=True, read_only=True)
+    arguments = CaseArgumentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Case
+        exclude = ['user']

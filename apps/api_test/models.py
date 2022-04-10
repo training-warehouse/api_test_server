@@ -66,3 +66,45 @@ class Api(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='项目', null=True, blank=True,
                                 related_name='apis')
 
+
+class ApiRunRecord(models.Model):
+    url = models.CharField(max_length=200, verbose_name='请求的url')
+    http_method = models.CharField(max_length=10, choices=HTTP_METHOD_CHOICE, verbose_name='请求方式')
+    data = models.TextField(null=True, verbose_name='提交的数据')
+    headers = models.TextField(null=True, verbose_name='提交的header')
+    create_time = models.DateTimeField(auto_now=True, verbose_name='运行的时间')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='执行人')
+    return_code = models.CharField(max_length=10, verbose_name='返回的code')
+    return_content = models.TextField(null=True, verbose_name='返回的内容')
+    api = models.ForeignKey(Api, on_delete=models.CASCADE, null=True, verbose_name='关联的api')
+
+    class Meta:
+        ordering = ['-create_time']
+
+
+class Case(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='cases', verbose_name='所属项目')
+    name = models.CharField(max_length=50, verbose_name='用例名称')
+    apis = models.ManyToManyField(Api, related_name='cases')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True, verbose_name='创建人')
+    description = models.CharField(max_length=1024, blank=True, null=True, verbose_name='描述')
+    create_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+
+class CaseArgument(models.Model):
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, null=True, related_name='arguments', verbose_name='用例')
+    name = models.CharField(max_length=100, verbose_name='参数名称')
+    value = models.CharField(max_length=100, verbose_name='参数值')
+
+
+class ApiArgument(models.Model):
+    ARGUMENT_ORIGIN_CHOICE = (
+        ('HEADER', 'HEADER'),
+        ('BODY', 'BODY'),
+        ('COOKIE', 'COOKIE'),
+    )
+
+    api = models.ForeignKey(Api, on_delete=models.CASCADE, null=True, related_name='arguments', verbose_name='用例API')
+    name = models.CharField(max_length=100, verbose_name='参数名字')
+    origin = models.CharField(max_length=20, choices=ARGUMENT_ORIGIN_CHOICE, verbose_name='参数来源')
+    format = models.CharField(max_length=100, verbose_name='参数获取格式')
