@@ -12,27 +12,21 @@ class HostSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'project_id', 'host', 'description')
 
 
+class ApiArgumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApiArgument
+        fields = '__all__'
+
+
 class ApiSerializer(serializers.ModelSerializer):
     project_id = serializers.IntegerField(write_only=True)
     host = HostSerializer(read_only=True)
     host_id = serializers.IntegerField(write_only=True)
+    arguments = ApiArgumentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Api
         fields = '__all__'
-
-
-class ProjectSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(read_only=True)
-    last_update_time = serializers.DateTimeField(read_only=True)
-    create_time = serializers.DateTimeField(read_only=True)
-    user = UserSerializer(read_only=True)
-    hosts = HostSerializer(many=True, read_only=True)
-    apis = ApiSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Project
-        fields = ('id', 'name', 'type', 'description', 'last_update_time', 'create_time', 'user', 'hosts', 'apis')
 
 
 class ApiRunRecordSerializer(serializers.ModelSerializer):
@@ -56,4 +50,20 @@ class CaseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Case
-        exclude = ['user']
+        exclude = ['user', 'project']
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+    last_update_time = serializers.DateTimeField(read_only=True)
+    create_time = serializers.DateTimeField(read_only=True)
+    user = UserSerializer(read_only=True)
+    hosts = HostSerializer(many=True, read_only=True)
+    apis = ApiSerializer(many=True, read_only=True)
+    cases = CaseSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Project
+        fields = (
+            'id', 'name', 'type', 'description', 'last_update_time', 'create_time', 'user', 'hosts', 'apis', 'cases'
+        )

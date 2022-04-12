@@ -1,9 +1,11 @@
 from rest_framework.views import APIView, Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
 
-from .models import Project, Host, Api, ApiRunRecord
-from .serializers import ProjectSerializer, HostSerializer, ApiSerializer, ApiRunRecordSerializer
+from .models import Project, Host, Api, ApiRunRecord, Case, CaseArgument, ApiArgument
+from .serializers import (ProjectSerializer, HostSerializer, ApiSerializer, ApiRunRecordSerializer,
+                          CaseArgumentSerializer, CaseSerializer)
 from apps.api_auth.authorizations import JWTAuthentication
 from . import api_request
 
@@ -50,3 +52,52 @@ class RunApiView(APIView):
 
         serializer = ApiRunRecordSerializer(record)
         return Response(serializer.data)
+
+
+class CaseView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = CaseSerializer(data=request.data)
+        if serializer.is_valid():
+            name = request.data.get('name')
+            arguments = request.data.get('arguments')
+            apis = request.data.get('apis')
+            description = request.data.get('description')
+            project_id = request.data.get('project_id')
+
+            case = Case.objects.create(
+                name=name,
+                description=description,
+                user=request.user,
+                project_id=project_id
+            )
+
+            if arguments:
+                for argument in arguments:
+                    CaseArgument.objects.create(
+                        name=argument['name'],
+                        value=argument['value'],
+                        case=case
+                    )
+
+            if apis:
+                apis.sort(key=lambda x: x['index'])
+                for api in apis:
+                    api_mod = Api.objects.get(pk=api['id'])
+                    case.apis.add(api_mod)
+                    api_arguments = api['arguments']
+                    if api_arguments:
+                        for api_argument in api_arguments:
+                            ApiArgument.objects.create(
+                                name=api_argument['name'],
+                                origin=api_argument['origin'],
+                                format=api_argument['format'],
+                                api=api_mod
+                            )
+            case.save()
+            return Response(CaseSerializer(case).data)
+        else:
+            print(serializer.errors)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
