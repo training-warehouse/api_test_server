@@ -90,6 +90,7 @@ class CaseView(APIView):
                     api_arguments = api['arguments']
                     if api_arguments:
                         for api_argument in api_arguments:
+                            # fixme ApiArgument不应该挂在api上
                             ApiArgument.objects.create(
                                 name=api_argument['name'],
                                 origin=api_argument['origin'],
