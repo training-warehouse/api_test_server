@@ -3,11 +3,12 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
-from .models import Project, Host, Api, ApiRunRecord, Case, CaseArgument, ApiArgument
+from .models import Project, Host, Api, ApiRunRecord, Case, CaseArgument, ApiArgument, CaseRunRecord, CaseApiRunRecord
 from .serializers import (ProjectSerializer, HostSerializer, ApiSerializer, ApiRunRecordSerializer,
-                          CaseArgumentSerializer, CaseSerializer)
+                          CaseArgumentSerializer, CaseSerializer, CaseRunRecordSerializer)
 from apps.api_auth.authorizations import JWTAuthentication
 from . import api_request
+from utils.dictor import dictor
 
 
 class ProjectView(ModelViewSet):
@@ -102,3 +103,138 @@ class CaseView(APIView):
         else:
             print(serializer.errors)
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, case_id):
+        serializer = CaseSerializer(data=request.data)
+        if serializer.is_valid():
+            name = request.data.get('name')
+            arguments = request.data.get('arguments')
+            apis = request.data.get('apis')
+            description = request.data.get('description')
+
+            case = Case.objects.get(pk=case_id)
+            case.name = name
+            case.description = description
+
+            if arguments:
+                argument_models = []
+                for argument in arguments:
+                    argument_id = argument['id']
+                    if argument_id:
+                        argument_mod = CaseArgument.objects.get(pk=argument_id)
+                        argument_mod.name = argument['name']
+                        argument_mod.value = argument['value']
+                        argument_mod.save()
+                    else:
+                        argument_mod = CaseArgument.objects.create(
+                            name=argument['name'],
+                            value=argument['value'],
+                            case=case
+                        )
+                    argument_models.append(argument_mod)
+                case.arguments.set(argument_models)
+            else:
+                case.arguments.set([])
+
+            if apis:
+                api_models = []
+                for api in apis:
+                    api_mod = Api.objects.get(pk=api['id'])
+
+                    api_arguments = api['arguments']
+                    if api_arguments:
+                        argument_models = []
+                        for api_argument in api_arguments:
+                            argument_id = api_argument['id']
+                            if argument_id:
+                                argument_mod = ApiArgument.objects.get(pk=argument_id)
+                                argument_mod.name = api_argument['name']
+                                argument_mod.origin = api_argument['origin']
+                                argument_mod.format = api_argument['format']
+                                argument_mod.save()
+                            else:
+                                argument_mod = ApiArgument.objects.create(
+                                    name=api_argument['name'],
+                                    origin=api_argument['origin'],
+                                    format=api_argument['format'],
+                                    case=case
+                                )
+                            argument_models.append(argument_mod)
+                        api_mod.arguments.set(argument_models)
+                    else:
+                        api_mod.arguments.set([])
+
+                    api_mod.save()
+                    api_models.append(api_mod)
+
+                case.apis.set(api_models)
+            else:
+                case.apis.set([])
+
+            case.save()
+            return Response(CaseSerializer(case).data)
+        else:
+            print(serializer.errors)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class RunCaseView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, case_id):
+        case = Case.objects.get(pk=case_id)
+        case_arguments = CaseArgument.objects.filter(case=case)
+        case_record = CaseRunRecord.objects.create(case=case)
+
+        global_arguments = {}
+        # 添加用例参数
+        for case_argument in case_arguments:
+            global_arguments[case_argument.name] = case_argument.value
+
+        # 运行API及添加API参数
+        api_models = case.apis.all()
+        for api_model in api_models:
+            response = api_request.request(api_model, global_arguments)
+            CaseApiRunRecord.objects.create(
+                url=response.url,
+                http_method=response.request.method,
+                data=response.request.body,
+                headers=response.request.headers,
+                user=request.user,
+                return_code=response.status_code,
+                return_content=response.text,
+                api=api_model,
+                case_record=case_record
+            )
+
+            api_arguments = api_model.arguments.all()
+            if api_arguments:
+                for api_argument in api_arguments:
+                    dictor_data = {}
+                    if api_argument.origin == 'HEAD':
+                        dictor_data = response.headers
+                    elif api_argument.origin == 'COOKIE':
+                        dictor_data = response.cookies
+                    elif api_argument.origin == 'BODY':
+                        dictor_data = response.json()
+
+                    argument_value = dictor(dictor_data, api_argument.format)
+                    global_arguments[api_argument.name] = argument_value
+
+        serializer = CaseRunRecordSerializer(case_record)
+        return Response(serializer.data)
+
+
+class RecordView(APIView):
+    def get(self, request):
+        record_type = request.GET.get('type')
+        project_id = request.GET.get('project')
+        if record_type == 'api':
+            records = ApiRunRecord.objects.filter(api__project_id=project_id)
+            serializers = ApiRunRecordSerializer(records, many=True)
+        else:
+            records = CaseRunRecord.objects.filter(case__project_id=project_id)
+            serializers = CaseRunRecordSerializer(records, many=True)
+
+        return Response(serializers.data)

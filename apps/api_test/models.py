@@ -108,3 +108,25 @@ class ApiArgument(models.Model):
     name = models.CharField(max_length=100, verbose_name='参数名字')
     origin = models.CharField(max_length=20, choices=ARGUMENT_ORIGIN_CHOICE, verbose_name='参数来源')
     format = models.CharField(max_length=100, verbose_name='参数获取格式')
+
+
+class CaseRunRecord(models.Model):
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, verbose_name='所属用例')
+    create_time = models.DateTimeField(auto_now=True, verbose_name='运行时间')
+
+    class Meta:
+        ordering = ['-create_time']
+
+
+class CaseApiRunRecord(models.Model):
+    url = models.CharField(max_length=200, verbose_name='请求的url')
+    http_method = models.CharField(max_length=10, choices=HTTP_METHOD_CHOICE, verbose_name='请求方式')
+    headers = models.TextField(null=True, blank=True, verbose_name='请求头')
+    data = models.TextField(null=True, blank=True, verbose_name='请求体')
+    create_time = models.DateTimeField(auto_now=True, verbose_name='运行时间')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name='执行命令的人')
+    return_code = models.CharField(max_length=10, verbose_name='返回的code')
+    return_content = models.TextField(null=True, blank=True, verbose_name='返回的内容')
+    api = models.ForeignKey(Api, on_delete=models.CASCADE, null=True, blank=True, verbose_name='关联的api')
+    case_record = models.ForeignKey(CaseRunRecord, on_delete=models.CASCADE, related_name='api_records',
+                                    verbose_name='关联的case_record')
