@@ -11,6 +11,26 @@ from . import api_request
 from utils.dictor import dictor
 
 
+class IndexView(APIView):
+    def get(self, request):
+        project_count = Project.objects.count()
+        api_count = Api.objects.count()
+        case_count = Case.objects.count()
+        api_record_count = ApiRunRecord.objects.count()
+        case_record_count = CaseApiRunRecord.objects.count()
+
+        data = {
+            'count': {
+                'project': project_count,
+                'api': api_count,
+                'case': case_count,
+                'api_record': api_record_count,
+                'case_record': case_record_count
+            }
+        }
+        return Response(data)
+
+
 class ProjectView(ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
