@@ -3,9 +3,10 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
-from .models import Project, Host, Api, ApiRunRecord, Case, CaseArgument, ApiArgument, CaseRunRecord, CaseApiRunRecord
+from .models import (Project, Host, Api, ApiRunRecord, Case, CaseArgument, ApiArgument, CaseRunRecord,
+                     CaseApiRunRecord, CrontabTask)
 from .serializers import (ProjectSerializer, HostSerializer, ApiSerializer, ApiRunRecordSerializer,
-                          CaseArgumentSerializer, CaseSerializer, CaseRunRecordSerializer)
+                          CaseArgumentSerializer, CaseSerializer, CaseRunRecordSerializer, CrontabTaskSerializer)
 from apps.api_auth.authorizations import JWTAuthentication
 from . import api_request
 from utils.dictor import dictor
@@ -258,3 +259,37 @@ class RecordView(APIView):
             serializers = CaseRunRecordSerializer(records, many=True)
 
         return Response(serializers.data)
+
+
+class CrontabTaskView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializers = CrontabTaskSerializer(data=request.data)
+        if serializers.is_valid():
+            name = serializers.validated_data.get('name')
+            project_id = serializers.validated_data.get('project_id')
+            case_id = serializers.validated_data.get('case_id')
+            expr = serializers.validated_data.get('expr')
+
+            task = CrontabTask.objects.create(name=name, project_id=project_id, case_id=case_id, expr=expr,
+                                              user=request.user)
+            return Response(CrontabTaskSerializer(task).data)
+        else:
+            print(serializers.errors)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, task_id):
+        serializers = CrontabTaskSerializer(data=request.data)
+        if serializers.is_valid():
+            name = serializers.validated_data.get('name')
+            case_id = serializers.validated_data.get('case_id')
+            expr = serializers.validated_data.get('expr')
+
+            queryset = CrontabTask.objects.filter(pk=task_id)
+            queryset.update(name=name, case_id=case_id, expr=expr)
+            return Response(CrontabTaskSerializer(queryset.first()).data)
+        else:
+            print(serializers.errors)
+            return Response(status=status.HTTP_400_BAD_REQUEST)

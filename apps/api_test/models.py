@@ -130,3 +130,19 @@ class CaseApiRunRecord(models.Model):
     api = models.ForeignKey(Api, on_delete=models.CASCADE, null=True, blank=True, verbose_name='关联的api')
     case_record = models.ForeignKey(CaseRunRecord, on_delete=models.CASCADE, related_name='api_records',
                                     verbose_name='关联的case_record')
+
+
+CRONTAB_TASK_STATUS = (
+    (1, 1),  # 运行
+    (2, 2)  # 停止
+)
+
+
+class CrontabTask(models.Model):
+    name = models.CharField(max_length=100, verbose_name='任务名称')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks', verbose_name='所属项目')
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, verbose_name='定时执行的用例')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='任务创建者')
+    expr = models.CharField(max_length=255, verbose_name='任务执行表达式')
+    status = models.SmallIntegerField(choices=CRONTAB_TASK_STATUS, default=2, verbose_name='任务状态')
+    create_time = models.DateTimeField(auto_now=True, verbose_name='创建时间')

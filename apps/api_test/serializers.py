@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from .models import Project, Host, Api, ApiRunRecord, Case, CaseArgument, ApiArgument, CaseRunRecord, CaseApiRunRecord
+from .models import (Project, Host, Api, ApiRunRecord, Case, CaseArgument, ApiArgument, CaseRunRecord,
+                     CaseApiRunRecord, CrontabTask)
 from apps.api_auth.serializers import UserSerializer
 
 
@@ -53,6 +54,18 @@ class CaseSerializer(serializers.ModelSerializer):
         exclude = ['user', 'project']
 
 
+class CrontabTaskSerializer(serializers.ModelSerializer):
+    project_id = serializers.IntegerField(write_only=True)
+    case_id = serializers.IntegerField(write_only=True)
+    case = CaseSerializer(read_only=True)
+    expr = serializers.CharField(max_length=255)
+    status = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = CrontabTask
+        fields = ['name', 'project_id', 'case_id', 'expr', 'status', 'case']
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     last_update_time = serializers.DateTimeField(read_only=True)
@@ -61,11 +74,13 @@ class ProjectSerializer(serializers.ModelSerializer):
     hosts = HostSerializer(many=True, read_only=True)
     apis = ApiSerializer(many=True, read_only=True)
     cases = CaseSerializer(many=True, read_only=True)
+    tasks = CrontabTaskSerializer(many=True, read_only=True)
 
     class Meta:
         model = Project
         fields = (
-            'id', 'name', 'type', 'description', 'last_update_time', 'create_time', 'user', 'hosts', 'apis', 'cases'
+            'id', 'name', 'type', 'description', 'last_update_time', 'create_time', 'user', 'hosts', 'apis', 'cases',
+            'tasks'
         )
 
 
