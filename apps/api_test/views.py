@@ -9,7 +9,8 @@ from .serializers import (ProjectSerializer, HostSerializer, ApiSerializer, ApiR
                           CaseArgumentSerializer, CaseSerializer, CaseRunRecordSerializer, CrontabTaskSerializer)
 from apps.api_auth.authorizations import JWTAuthentication
 from . import api_request
-from utils.dictor import dictor
+from .view_extension import run_case
+from . import api_scheduler
 
 
 class IndexView(APIView):
@@ -204,44 +205,7 @@ class RunCaseView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, case_id):
-        case = Case.objects.get(pk=case_id)
-        case_arguments = CaseArgument.objects.filter(case=case)
-        case_record = CaseRunRecord.objects.create(case=case)
-
-        global_arguments = {}
-        # 添加用例参数
-        for case_argument in case_arguments:
-            global_arguments[case_argument.name] = case_argument.value
-
-        # 运行API及添加API参数
-        api_models = case.apis.all()
-        for api_model in api_models:
-            response = api_request.request(api_model, global_arguments)
-            CaseApiRunRecord.objects.create(
-                url=response.url,
-                http_method=response.request.method,
-                data=response.request.body,
-                headers=response.request.headers,
-                user=request.user,
-                return_code=response.status_code,
-                return_content=response.text,
-                api=api_model,
-                case_record=case_record
-            )
-
-            api_arguments = api_model.arguments.all()
-            if api_arguments:
-                for api_argument in api_arguments:
-                    dictor_data = {}
-                    if api_argument.origin == 'HEAD':
-                        dictor_data = response.headers
-                    elif api_argument.origin == 'COOKIE':
-                        dictor_data = response.cookies
-                    elif api_argument.origin == 'BODY':
-                        dictor_data = response.json()
-
-                    argument_value = dictor(dictor_data, api_argument.format)
-                    global_arguments[api_argument.name] = argument_value
+        case_record = run_case(case_id, request)
 
         serializer = CaseRunRecordSerializer(case_record)
         return Response(serializer.data)
@@ -293,3 +257,26 @@ class CrontabTaskView(APIView):
         else:
             print(serializers.errors)
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class StartStopTaskView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, task_id, target_status):
+        task = CrontabTask.objects.get(pk=task_id)
+        if target_status == 1:
+            if task.status == 1:
+                # task正在运行
+                return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'task 正在运行，无需再次启动'})
+            api_scheduler.add_task(task, request)
+            task.status = 1
+        elif target_status == 2:
+            if task.status == 2:
+                return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'task 没有在运行，不需要停止'})
+            api_scheduler.remove_task(task)
+            task.status = 2
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': '状态值不符合规范'})
+        task.save()
+        return Response(CrontabTaskSerializer(task).data)

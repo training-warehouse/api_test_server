@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (ProjectView, HostViewSet, ApiViewSet, RunApiView, CaseView, RunCaseView, RecordView, IndexView,
-                    CrontabTaskView)
+                    CrontabTaskView, StartStopTaskView)
 
 app_name = 'api_test'
 
@@ -20,4 +20,5 @@ urlpatterns = [
                   path('record', RecordView.as_view(), name='record'),
                   path('task', CrontabTaskView.as_view(), name='task'),
                   path('task/<int:task_id>', CrontabTaskView.as_view(), name='add_task'),
+                  path('task/<int:task_id>/<int:target_status>', StartStopTaskView.as_view(), name='change_task'),
               ] + router.urls

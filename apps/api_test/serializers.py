@@ -63,7 +63,7 @@ class CrontabTaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CrontabTask
-        fields = ['name', 'project_id', 'case_id', 'expr', 'status', 'case']
+        fields = ['id', 'name', 'project_id', 'case_id', 'expr', 'status', 'case']
 
 
 class ProjectSerializer(serializers.ModelSerializer):
