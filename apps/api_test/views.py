@@ -141,7 +141,7 @@ class CaseView(APIView):
             if arguments:
                 argument_models = []
                 for argument in arguments:
-                    argument_id = argument['id']
+                    argument_id = argument.get('id')
                     if argument_id:
                         argument_mod = CaseArgument.objects.get(pk=argument_id)
                         argument_mod.name = argument['name']
@@ -167,7 +167,7 @@ class CaseView(APIView):
                     if api_arguments:
                         argument_models = []
                         for api_argument in api_arguments:
-                            argument_id = api_argument['id']
+                            argument_id = api_argument.get('id')
                             if argument_id:
                                 argument_mod = ApiArgument.objects.get(pk=argument_id)
                                 argument_mod.name = api_argument['name']
@@ -179,7 +179,7 @@ class CaseView(APIView):
                                     name=api_argument['name'],
                                     origin=api_argument['origin'],
                                     format=api_argument['format'],
-                                    case=case
+                                    api=api_mod
                                 )
                             argument_models.append(argument_mod)
                         api_mod.arguments.set(argument_models)

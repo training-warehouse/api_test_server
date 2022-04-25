@@ -50,6 +50,14 @@ class UserView(APIView):
 
         return Response(UserSerializer(user).data)
 
+    def patch(self, request, user_id):
+        user = User.objects.get(pk=user_id)
+
+        is_active = request.data.get('is_active')
+        user.is_active = is_active
+        user.save()
+        return Response(UserSerializer(user).data)
+
 
 class AvatarView(APIView):
     @staticmethod

@@ -30,7 +30,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     uid = ShortUUIDField(primary_key=True, verbose_name='用户表主键')
     telephone = models.CharField(max_length=11, unique=True, verbose_name='手机号')
-    email = models.EmailField(unique=True, max_length=100, verbose_name='邮箱')
+    email = models.EmailField(max_length=100, verbose_name='邮箱')
     username = models.CharField(max_length=100, verbose_name='用户名')
     avatar = models.CharField(max_length=255, verbose_name='头像链接')
     date_joined = models.DateTimeField(auto_now_add=True, verbose_name='加入时间')
